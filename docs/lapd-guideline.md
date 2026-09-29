@@ -4,14 +4,14 @@
 
 ## 先约定路径与交接方式
 
-本地项目根目录为 `E:\dev\manifold-clustering`。远程示例路径为 `/home/USER/manifold-clustering`，请把 `USER`、`HOST` 和该路径替换为实际值。以下 PowerShell 命令均从本地项目根目录执行；bash 命令均在远程终端执行。远程若尚无本项目仓库，可先运行 `git clone https://github.com/ruan-momota/manifold-clustering.git /home/USER/manifold-clustering`；已有仓库则直接使用。当前新写的 `matlab/lapd_run.m` 尚未提交或推送，需要通过 `scp` 单独上传。
+本地项目根目录为 `E:\dev\manifold-clustering`。阶段 0 日志确认远程项目当前位于 `/tmp/ruan/manifold-clustering`；若服务器之后移动或清理了该目录，先更新以下路径。请把 `USER@HOST` 替换为实际 SSH 地址。以下 PowerShell 命令均从本地项目根目录执行；bash 命令均在远程终端执行。阶段 1 仍显式上传 `matlab/lapd_run.m`，以确保远程运行的是本手册对应的版本。
 
 本地 PowerShell 先设置本次会话变量：
 
 ```powershell
 Set-Location E:\dev\manifold-clustering
 $LapdRemote = "USER@HOST"
-$LapdRemoteRoot = "/home/USER/manifold-clustering"
+$LapdRemoteRoot = "/tmp/ruan/manifold-clustering"
 ```
 
 每一阶段完成后，把该阶段列出的文件复制回本地项目的 `results/lapd_returns/`，告诉我所在目录。我会直接读取这些文件并决定下一阶段是否需要调整。**不要通过 Git 传输 `data/` 中的向量或远程运行生成的大文件**；项目已忽略 `data/` 和 `vendor/LAPD/`。远程脚本的每次输出为一个 `.mat`，对应的 `.log` 保留 MATLAB 标准输出和错误信息。失败时也请返回 `.log`。
@@ -23,7 +23,7 @@ $LapdRemoteRoot = "/home/USER/manifold-clustering"
 **远程：** 在 bash 中执行；`git clone` 只在 `vendor/LAPD` 不存在时运行。
 
 ```bash
-cd /home/USER/manifold-clustering
+cd /tmp/ruan/manifold-clustering
 mkdir -p vendor matlab data/lapd_mat results/lapd/logs
 if [ ! -d vendor/LAPD/.git ]; then git clone https://github.com/HYfromLA/LAPD.git vendor/LAPD; fi
 git -C vendor/LAPD rev-parse HEAD > results/lapd/logs/lapd_commit.txt
@@ -54,7 +54,7 @@ scp .\matlab\lapd_run.m "${LapdRemote}:${LapdRemoteRoot}/matlab/lapd_run.m"
 **远程：** 先用阶段 0 的 `benchmark_files.txt` 确认数据文件确实存在，再执行：
 
 ```bash
-cd /home/USER/manifold-clustering
+cd /tmp/ruan/manifold-clustering
 PROJECT_ROOT="$PWD"
 COIL_FILE=$(find vendor/LAPD -iname 'coil20.mat' -print -quit)
 USPS_FILE=$(find vendor/LAPD -iname 'USPS.mat' -print -quit)
@@ -90,7 +90,7 @@ scp .\data\lapd_mat\openml_14_scaled.mat "${LapdRemote}:${LapdRemoteRoot}/data/l
 **远程：** 只核对数据结构，不运行算法。日志应显示 `X` 分别为 `150×512` 和 `2000×512`，标签和索引长度与样本数相同。
 
 ```bash
-cd /home/USER/manifold-clustering
+cd /tmp/ruan/manifold-clustering
 PROJECT_ROOT="$PWD"
 matlab -batch "A=load('$PROJECT_ROOT/data/lapd_mat/openml_61_scaled.mat'); B=load('$PROJECT_ROOT/data/lapd_mat/openml_14_scaled.mat'); disp(size(A.X)); disp(size(B.X)); assert(size(A.X,1)==numel(A.labelsGT)); assert(size(B.X,1)==numel(B.labelsGT)); assert(all(A.sample_indices(:)==(0:size(A.X,1)-1)')); assert(all(B.sample_indices(:)==(0:size(B.X,1)-1)'))" > results/lapd/logs/mat_input_check.log 2>&1
 ```
@@ -106,10 +106,10 @@ scp "${LapdRemote}:${LapdRemoteRoot}/results/lapd/logs/mat_input_check.log" .\re
 
 ## 阶段 3：ZEUS 向量小规模试跑
 
-**远程：** 使用同一组预先固定的 OpenML 参数先跑 ID 61，再跑 ID 14。`known` 仅使用真实标签的**类别数**指定 `K`；`estimate` 不传 `K`，记录 LAPD 估计的 `k_hat`。两种协议的结果必须分开。入口当前初始参数为 `intrdim=1`、`epsilon=0`、`bandwidth=10`、`weight='two sided'`、`parallel=0`，并显式给足近邻搜索数量；这是一组**试跑配置**，不等于已验证的最佳配置。每次运行的实际 `opts` 都保存在 `.mat` 中。官方 `main.m` 会自行调用 `rng('default')`，因此外部设置不同随机种子可能不会改变结果。[官方 `main.m`](https://github.com/HYfromLA/LAPD/blob/main/Auxiliary/main.m)
+**远程：** 使用同一组预先固定的 OpenML 参数先跑 ID 61，再跑 ID 14。`known` 仅使用真实标签的**类别数**传入 `K`；`estimate` 不传 `K`，记录 LAPD 估计的 `k_hat`。两种协议的结果必须分开。**传入 `K` 不保证实际输出 `k_hat=K`**：阶段 3 的 ID 14 传入 `K=10`，实际只输出 7 个簇。因此 `known` 表示“提供类别数”，不能称为“固定输出类别数”；汇总时同时报告 `opts.K` 和实际 `k_hat`。入口当前初始参数为 `intrdim=1`、`epsilon=0`、`bandwidth=10`、`weight='two sided'`、`parallel=0`，并显式给足近邻搜索数量；这是一组**试跑配置**，不等于已验证的最佳配置。每次运行的实际 `opts` 都保存在 `.mat` 中。官方 `main.m` 会自行调用 `rng('default')`，因此外部设置不同随机种子可能不会改变结果。[官方 `main.m`](https://github.com/HYfromLA/LAPD/blob/main/Auxiliary/main.m)
 
 ```bash
-cd /home/USER/manifold-clustering
+cd /tmp/ruan/manifold-clustering
 PROJECT_ROOT="$PWD"
 matlab -batch "addpath('$PROJECT_ROOT/matlab'); lapd_run('openml','$PROJECT_ROOT/data/lapd_mat/openml_61_scaled.mat','$PROJECT_ROOT/results/lapd/openml_61_scaled_known.mat','$PROJECT_ROOT/vendor/LAPD','known')" > results/lapd/logs/openml_61_scaled_known.log 2>&1
 matlab -batch "addpath('$PROJECT_ROOT/matlab'); lapd_run('openml','$PROJECT_ROOT/data/lapd_mat/openml_61_scaled.mat','$PROJECT_ROOT/results/lapd/openml_61_scaled_estimate.mat','$PROJECT_ROOT/vendor/LAPD','estimate')" > results/lapd/logs/openml_61_scaled_estimate.log 2>&1
@@ -142,7 +142,7 @@ scp -r .\data\lapd_mat "${LapdRemote}:${LapdRemoteRoot}/data/"
 **远程：** 一次跑一个 `.mat`，每个模式都保留独立日志与退出码。以下循环包括阶段 3 的两个 ID；若想避免重跑，可在循环中按文件名跳过，但应在运行记录里注明。
 
 ```bash
-cd /home/USER/manifold-clustering
+cd /tmp/ruan/manifold-clustering
 PROJECT_ROOT="$PWD"
 printf 'dataset\tmode\texit_code\n' > results/lapd/run_status.tsv
 for input_file in data/lapd_mat/openml_*_scaled.mat; do
@@ -163,7 +163,13 @@ New-Item -ItemType Directory -Force .\results\lapd_returns\stage4 | Out-Null
 scp -r "${LapdRemote}:${LapdRemoteRoot}/results/lapd" .\results\lapd_returns\stage4\
 ```
 
-我需要 `run_status.tsv`、全部成功的 `openml_*_scaled_*.mat`、对应 `.log`、`lapd_commit.txt` 和 `environment.log`。返回后我会按 OpenML ID 与本地 `.npz` 核验标签顺序，分别汇总 `known`/`estimate` 的 ARI、估计簇数与耗时，再和已有 ZEUS + K-means 比较。若某个 ID 失败，报告中保留它及错误原因，不只计算成功数据集的平均值。
+我需要 `run_status.tsv`、全部成功的 `openml_*_scaled_*.mat`、对应 `.log`、`lapd_commit.txt` 和 `environment.log`。返回后在本地运行：
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\audit_lapd_results.py
+```
+
+该脚本输出 `results/lapd_stage4_audit.csv`，逐项核验 `.npz` 标签和样本顺序，记录实际输出簇数、未分配样本数、覆盖率、耗时，以及预测完整时的全样本 ARI。**退出码 0 不保证每个样本都有预测。** 首次 34 数据集实验的 68 次 MATLAB 进程全部退出码为 0，但 9 份结果包含 `NaN` 预测；这些运行的全样本 ARI 留空，不能悄悄删除未分配样本后计算。分析时将 `known`/`estimate` 分开，与已有 ZEUS + K-means 比较，并报告每个模式的完整运行数。若某个 ID 失败，保留它及错误原因，不只统计成功数据集。
 
 ## 常见停止点
 
