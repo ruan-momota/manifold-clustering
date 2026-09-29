@@ -2,5 +2,7 @@
 data/
 models/
 vendor/zeus/
+vendor/LAPD/
+results/lapd_returns/
 notebooks/.ipynb_checkpoints/
 __pycache__/
