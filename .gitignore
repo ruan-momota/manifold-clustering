@@ -1,0 +1,6 @@
+.venv/
+data/
+models/
+vendor/zeus/
+notebooks/.ipynb_checkpoints/
+__pycache__/

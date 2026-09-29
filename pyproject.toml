@@ -1,0 +1,31 @@
+[project]
+name = "manifold-clustering"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "matplotlib>=3.11.2",
+    "numpy<2",
+    "omegaconf>=2.3.1",
+    "openml>=0.15.1",
+    "pandas>=2.3.3",
+    "scikit-learn>=1.5,<1.6",
+    "scipy>=1.17.1",
+    "torch==2.5.1",
+    "torchmetrics>=1.9.0",
+    "tqdm>=4.70.1",
+    "wandb>=0.30.0",
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.3.0",
+    "jupyterlab>=4.6.4",
+]
