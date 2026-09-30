@@ -1,0 +1,2 @@
+clip_load_seconds,extraction_seconds,training_seconds,n_samples,batch_size,epochs
+6.924942100000408,61.603059799999755,1.0802898000001733,100,25,3

@@ -1,5 +1,9 @@
 # CPP 官方 CIFAR-10 实验：远程执行手册
 
+本地 CPU 小实验使用 [05_cpp_cpu_smoke.ipynb](../notebooks/05_cpp_cpu_smoke.ipynb)。在项目根目录执行 `uv sync --group cpp` 安装 CPU torchvision 和官方 CLIP，再用项目 `.venv` 内核运行该 notebook。它随机取 100 张图像，保持论文的模型维度，训练 3 轮；评分与耗时写入 `results/cpp_cpu100_*.csv`。这是小规模运行记录，不作为论文复现分数。
+
+[06_cpp_cpu1000.ipynb](../notebooks/06_cpp_cpu1000.ipynb) 将样本数扩大到 1,000，批量大小仍为 25，训练仍为 3 轮；结果写入 `results/cpp_cpu1000_*.csv`。所有 notebook 使用 UTF-8 保存，运行结果保留在相应文件中。
+
 本手册对应 [04_cpp_cifar10.ipynb](../notebooks/04_cpp_cifar10.ipynb)。本地项目使用 Windows PowerShell，以下远程命令假定服务器使用 Linux bash。按顺序完成；每一步只核对当前实验需要的信息。论文的 CIFAR-10 结果是 ACC 97.4%、NMI 93.6%；notebook 目前记录的是训练批次的指标均值，两者的统计方式不完全相同，不能只凭数值接近就宣布完整复现。[论文 Table 1](https://arxiv.org/html/2306.05272v5#S4.SS1)、[官方训练入口](https://github.com/LeslieTrue/CPP/blob/main/main.py)
 
 ## 0. 核对服务器

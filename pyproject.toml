@@ -18,6 +18,8 @@ dependencies = [
 
 [tool.uv.sources]
 torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+clip = { git = "https://github.com/openai/CLIP.git" }
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
@@ -25,6 +27,10 @@ url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
 [dependency-groups]
+cpp = [
+    "torchvision==0.20.1",
+    "clip",
+]
 dev = [
     "ipykernel>=7.3.0",
     "jupyterlab>=4.6.4",
