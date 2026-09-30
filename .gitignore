@@ -1,8 +1,10 @@
 .venv/
+.venv-cpp/
 data/
 models/
 vendor/zeus/
 vendor/LAPD/
+vendor/CPP/
 results/lapd_returns/
 notebooks/.ipynb_checkpoints/
 __pycache__/
