@@ -1,5 +1,9 @@
 # CPP 官方 CIFAR-10 实验：远程执行手册
 
+当前已跳过完整图像复现，直接运行 [07_cpp_zeus_openml.ipynb](../notebooks/07_cpp_zeus_openml.ipynb)。在本地选择项目 `.venv` 内核，按单元顺序执行：先训练 ID 61 和 ID 14，再扩展到全部 34 个数据集。它直接读取 `data/embeddings/` 中的 `embeddings_scaled`，使用 512 维输入，不需要加载 CLIP。
+
+核验结果：每个数据集的预测数量等于样本数；`results/cpp_zeus_smoke.csv` 保存两个试跑结果，`results/cpp_zeus_openml.csv` 保存完整汇总，`data/cpp_zeus/` 保存预测与样本索引。最后两个单元分别比较全体数据上的 K-means，以及双方均有完整预测的数据上的 LAPD。训练参数和运行输出保存在 notebook 中。
+
 本地 CPU 小实验使用 [05_cpp_cpu_smoke.ipynb](../notebooks/05_cpp_cpu_smoke.ipynb)。在项目根目录执行 `uv sync --group cpp` 安装 CPU torchvision 和官方 CLIP，再用项目 `.venv` 内核运行该 notebook。它随机取 100 张图像，保持论文的模型维度，训练 3 轮；评分与耗时写入 `results/cpp_cpu100_*.csv`。这是小规模运行记录，不作为论文复现分数。
 
 [06_cpp_cpu1000.ipynb](../notebooks/06_cpp_cpu1000.ipynb) 将样本数扩大到 1,000，批量大小仍为 25，训练仍为 3 轮；结果写入 `results/cpp_cpu1000_*.csv`。所有 notebook 使用 UTF-8 保存，运行结果保留在相应文件中。
