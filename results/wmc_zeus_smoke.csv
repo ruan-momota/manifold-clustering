@@ -1,0 +1,3 @@
+openml_id,method,n_samples,input_dim,requested_k,predicted_k,n_components,ari,kmeans_ari,representation_seconds,clustering_seconds,embedding_variant,solver,wmc_source_sha256,status,gamma,eta,support_size,maxiter,n_nonzero,seed,n_init,delta_vs_kmeans
+61,L-WMC,150,512,3,3,36,0.008722404658859942,0.851456931395815,0.2700646000012057,0.07015949999913573,embeddings_scaled,lasso_lars,b7ea8bd7810ba17a1a29d75b2690311117372099f610634405cb2356bdaa0a8a,complete,50,20,100,40,50,42,100,-0.842734526736955
+14,L-WMC,2000,512,10,10,410,0.005161562197610815,0.505634549337214,43.197951699999976,1.489337399998476,embeddings_scaled,lasso_lars,b7ea8bd7810ba17a1a29d75b2690311117372099f610634405cb2356bdaa0a8a,complete,50,20,100,40,50,42,100,-0.5004729871396032
