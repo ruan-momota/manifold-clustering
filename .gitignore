@@ -5,6 +5,8 @@ models/
 vendor/zeus/
 vendor/LAPD/
 vendor/CPP/
+vendor/WMC/
+presentation
 results/lapd_returns/
 notebooks/.ipynb_checkpoints/
 __pycache__/
