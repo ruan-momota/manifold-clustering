@@ -1,6 +1,10 @@
-function lapd_run(kind, input_file, output_file, lapd_root, mode)
+function lapd_run(kind, input_file, output_file, lapd_root, mode, d)
 % Run one LAPD dataset and save labels, parameters, diagnostics, and provenance.
 % kind: 'coil20', 'usps', or 'openml'; mode: 'known' or 'estimate'.
+% OpenML d: a positive integer for manual D; [] for automatic D.
+if nargin < 6
+    d = 1;
+end
 
 start_dir = pwd;
 input_file = absolute_path(input_file, start_dir);
@@ -53,7 +57,9 @@ switch lower(kind)
                 any(sample_indices ~= (0:size(X, 1)-1)')
             error('OpenML sample order mismatch');
         end
-        opts.intrdim = 1;
+        if ~isempty(d)
+            opts.intrdim = d;
+        end
         opts.epsilon = 0;
         opts.bandwidth = 10;
         opts.knnnumber = min(size(X, 1), max(100, ceil(0.1 * size(X, 1)) + opts.bandwidth));
@@ -76,6 +82,7 @@ matlab_version = version;
 
 fprintf('LAPD %s %s: %d samples, %d features\n', kind, mode, size(X, 1), size(X, 2));
 [intrinsic_dim, epsilon, k_hat, predicted_labels, runtime, misc] = main(X, opts);
+fprintf('Actual D=%d\n', intrinsic_dim);
 predicted_labels = predicted_labels(:);
 if numel(predicted_labels) ~= size(X, 1)
     error('LAPD returned %d labels for %d samples', numel(predicted_labels), size(X, 1));
