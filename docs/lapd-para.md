@@ -227,7 +227,7 @@ cat results/lapd_d_check/neighbors_build/build.log
 
 依据：[B-01 回传目录](../results/lapd_returns/d_check/neighbors_build/)。
 
-### B-02：补充 C++ 兼容处理后重试，待执行
+### B-02：补充 C++ 兼容处理后重试，失败
 
 编译脚本现已增加两处处理：编译时强制包含 cstring；将外部工具箱 nearneigh_search.h 中的 `root.center = randindex(Nused);` 改为 `root.center = this->randindex(Nused);`。第二处会保存到项目 data/ 下的外部源码副本，重复执行不会重复添加 this->。没有改动 LAPD 的官方 `.m` 文件或聚类参数。
 
@@ -247,7 +247,33 @@ git -C data/runtime_libs/opentstool_src diff -- OpenTSTOOL/mex-dev/NNSearcher/ne
 cat "$RUN_DIR/build.log"
 ```
 
-本地无 MATLAB，尚未确认这次编译是否成功；以远程日志和小型查询核对结果为准。
+实际项目 commit：`a098e903fe4af8f8e87532a766e0a11a284d38d2`；外部源码 commit 与 B-01 相同。回传的 source_patch.diff 确认 randindex 调用已改为 this->randindex。
+
+结果：nn_prepare 编译成功；nn_search 编译失败，退出码仍为 1，没有执行 range_search 编译和近邻查询核对。新的错误位于 nearneigh_search.h 第 746 行：派生模板类中直接调用继承的 test 成员，现代编译器无法按这个写法解析。
+
+依据：[B-02 回传目录](../results/lapd_returns/d_check/neighbors_build_retry/)。
+
+### B-03：补充 test 成员可见性，待执行
+
+编译脚本保留 B-02 的两项处理，再在 ATRIA 类中添加 `using nearneigh_searcher<POINT_SET>::test;`，与该类已有的继承成员声明保持同一种写法。重复执行不会重复添加声明。仍只改外部工具箱副本的 C++ 兼容写法，没有改变距离计算或 LAPD 的参数。
+
+重新推送入口编译脚本和本文后，使用新日志目录运行。无需重新下载外部源码：
+
+```bash
+cd /tmp/ruan/manifold-clustering
+git pull --ff-only
+RUN_DIR=results/lapd_d_check/neighbors_build_retry2
+mkdir -p "$RUN_DIR"
+git rev-parse HEAD > "$RUN_DIR/project_commit.txt"
+git -C data/runtime_libs/opentstool_src rev-parse HEAD > "$RUN_DIR/source_commit.txt"
+matlab -batch "addpath('matlab'); build_lapd_neighbors" > "$RUN_DIR/build.log" 2>&1
+code=$?
+printf 'exit_code\n%s\n' "$code" > "$RUN_DIR/run_status.tsv"
+git -C data/runtime_libs/opentstool_src diff -- OpenTSTOOL/mex-dev/NNSearcher/nearneigh_search.h > "$RUN_DIR/source_patch.diff"
+cat "$RUN_DIR/build.log"
+```
+
+本地没有 MATLAB，尚未验证 B-03 是否编译成功；以远程日志和近邻查询核对结果为准。
 
 自动 D 的完整聚类、ID 14 及其他代表性数据集的 D 检查尚未执行。待实际运行后追加记录，不提前填写结果。
 

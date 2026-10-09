@@ -14,6 +14,11 @@ header_file = fullfile(source_dir, '..', 'NNSearcher', 'nearneigh_search.h');
 header = fileread(header_file);
 header = strrep(header, 'root.center = randindex(Nused);', ...
     'root.center = this->randindex(Nused);');
+if ~contains(header, 'using nearneigh_searcher<POINT_SET>::test;')
+    header = strrep(header, 'using nearneigh_searcher<POINT_SET>::Nused;', ...
+        ['using nearneigh_searcher<POINT_SET>::Nused;' newline ...
+         '    using nearneigh_searcher<POINT_SET>::test;']);
+end
 fid = fopen(header_file, 'w');
 fprintf(fid, '%s', header);
 fclose(fid);
