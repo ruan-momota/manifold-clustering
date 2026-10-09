@@ -253,9 +253,9 @@ cat "$RUN_DIR/build.log"
 
 依据：[B-02 回传目录](../results/lapd_returns/d_check/neighbors_build_retry/)。
 
-### B-03：补充 test 成员可见性，待执行
+### B-03：补充 test 成员可见性后重试，仍失败
 
-编译脚本保留 B-02 的两项处理，再在 ATRIA 类中添加 `using nearneigh_searcher<POINT_SET>::test;`，与该类已有的继承成员声明保持同一种写法。重复执行不会重复添加声明。仍只改外部工具箱副本的 C++ 兼容写法，没有改变距离计算或 LAPD 的参数。
+编译脚本保留 B-02 的两项处理，再在 Brute 和 ATRIA 类中添加 `using nearneigh_searcher<POINT_SET>::test;`，与已有的继承成员声明保持同一种写法。重复执行不会重复添加声明。仍只改外部工具箱副本的 C++ 兼容写法，没有改变距离计算或 LAPD 的参数。
 
 重新推送入口编译脚本和本文后，使用新日志目录运行。无需重新下载外部源码：
 
@@ -273,7 +273,35 @@ git -C data/runtime_libs/opentstool_src diff -- OpenTSTOOL/mex-dev/NNSearcher/ne
 cat "$RUN_DIR/build.log"
 ```
 
-本地没有 MATLAB，尚未验证 B-03 是否编译成功；以远程日志和近邻查询核对结果为准。
+实际项目 commit：`64224e6f9f37c145f16a86ff5d2b7e1f9b6e3734`；外部源码 commit 与 B-01 相同。退出码为 1。
+
+结果：nn_prepare 和 nn_search 均编译成功；range_search 在 range_search.cpp 第 116 行失败。旧代码写成 `if (range<0)`，但 range 是指向半径值的指针，不能与数字 0 做大小比较。本次尚未执行近邻查询核对，也没有运行 MSVD。
+
+依据：[B-03 回传目录](../results/lapd_returns/d_check/neighbors_build_retry2/)。
+
+### B-04：修正半径值检查，待执行
+
+编译脚本将上述错误检查改成逐个检查 `range[i] < 0`，同时支持统一半径和每个查询点各用一个半径。修改保存在 data/ 下的外部源码副本中，重复运行不会重复改写。这次没有改变 LAPD 参数或距离计算。
+
+三个模块编译完成后，脚本既核对最近邻结果，也核对不同半径内的邻居数量；全部一致才打印 `Neighbor search check passed.`。本地没有 MATLAB，编译和运行仍待远程验证。
+
+本地提交并推送 matlab/build_lapd_neighbors.m 和本文后，远程执行下面的命令。沿用已下载的源码，不重新 clone 或 checkout：
+
+```bash
+cd /tmp/ruan/manifold-clustering
+git pull --ff-only
+RUN_DIR=results/lapd_d_check/neighbors_build_retry3
+mkdir -p "$RUN_DIR"
+git rev-parse HEAD > "$RUN_DIR/project_commit.txt"
+git -C data/runtime_libs/opentstool_src rev-parse HEAD > "$RUN_DIR/source_commit.txt"
+matlab -batch "addpath('matlab'); build_lapd_neighbors" > "$RUN_DIR/build.log" 2>&1
+code=$?
+printf 'exit_code\n%s\n' "$code" > "$RUN_DIR/run_status.tsv"
+git -C data/runtime_libs/opentstool_src diff -- OpenTSTOOL/mex-dev/NNSearcher/nearneigh_search.h OpenTSTOOL/mex-dev/NN/range_search.cpp > "$RUN_DIR/source_patch.diff"
+cat "$RUN_DIR/build.log"
+```
+
+本次仅补齐并验证近邻模块。确认通过后，再使用项目目录内的 FFTW 库重试 MSVD，单独记录估计 D 的结果。
 
 自动 D 的完整聚类、ID 14 及其他代表性数据集的 D 检查尚未执行。待实际运行后追加记录，不提前填写结果。
 

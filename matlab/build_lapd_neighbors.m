@@ -23,6 +23,21 @@ fid = fopen(header_file, 'w');
 fprintf(fid, '%s', header);
 fclose(fid);
 
+% Check radius values, rather than comparing their pointer with zero.
+range_file = fullfile(source_dir, 'range_search.cpp');
+range_source = fileread(range_file);
+range_source = regexprep(range_source, ...
+    'if \(range<0\) \{\s*mexErrMsgTxt\("Range must be positive"\);\s*return;\s*\}', ...
+    ['for (long i = 0; i < N_range; ++i) {' newline ...
+     '        if (range[i] < 0) {' newline ...
+     '            mexErrMsgTxt("Range must be positive");' newline ...
+     '            return;' newline ...
+     '        }' newline ...
+     '    }']);
+fid = fopen(range_file, 'w');
+fprintf(fid, '%s', range_source);
+fclose(fid);
+
 names = {'nn_prepare', 'nn_search', 'range_search'};
 for i = 1:numel(names)
     fprintf('Compiling %s\n', names{i});
@@ -45,5 +60,9 @@ atria = nn_prepare(X);
 [expected_indices, expected_distances] = knnsearch(X, X(1:3, :), 'K', 3);
 assert(isequal(indices, expected_indices));
 assert(max(abs(distances(:) - expected_distances(:))) < 1e-10);
+radii = [0.2; 0.4; 0.6];
+counts = range_search(X, atria, X(1:3, :), radii);
+expected_counts = sum(pdist2(X(1:3, :), X) <= radii, 2);
+assert(isequal(counts, expected_counts));
 fprintf('Neighbor search check passed.\n');
 end
