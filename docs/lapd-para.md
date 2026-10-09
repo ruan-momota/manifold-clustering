@@ -98,11 +98,11 @@ d=2、3 的比例与远程警告打印值吻合，支持连接不足的解释。
 
 依据：[调查说明](lapd-d-diagnosis.md)、[几何检查结果](../results/lapd_d_geometry.csv)、[检查脚本](../scripts/diagnose_lapd_geometry.py)。
 
-### F-01：Iris d=2 放宽 filter，待执行
+### F-01：Iris d=2 放宽 filter，已执行
 
 目的：检查 d=2 失败是否与形状筛选过严有关。只改变 filter，保留 D-01b 的其余配置。
 
-| 项目 | D-01b | F-01 计划 |
+| 项目 | D-01b | F-01 实际配置 |
 | --- | --- | --- |
 | d | 2 | 2 |
 | filter | 默认 1.25 | 显式传入 1.50 |
@@ -111,12 +111,115 @@ d=2、3 的比例与远程警告打印值吻合，支持连接不足的解释。
 | knnnumber | 100 | 100 |
 | K | 提供 3 | 提供 3 |
 | 其余参数 | D-01 共同配置 | 相同 |
-| 结果目录 | 原 manual_smoke | 计划使用独立 `results/lapd_d_check/filter_check/d2_filter150/` |
-| 运行状态与结果 | 失败 | 尚未运行，无结果 |
+| 结果目录 | 原 manual_smoke | `results/lapd_d_check/filter_check/d2_filter150/` |
+| 运行状态与结果 | 失败 | 退出码 0；150/150 预测完整；输出 3 类 |
 
-1.50 是试探值，不是已验证的最佳参数。入口现已支持通过第七个参数传入 filter；F-01 尚未运行。
+环境：MATLAB R2022b（9.13.0.2049777），官方 commit 与第 1 节一致。项目 commit：`20b052a3d143de39b4725f6ff2b92b16162f6319`。结果中的标签和样本索引已与缓存逐项核对，实际 D=2，实际 filter=1.50，其他显式参数与 D-01b 相同。
 
-自动 D、ID 14 及其他代表性数据集的 D 检查也尚未执行。待实际运行后追加记录，不提前填写结果。
+| 比较项 | 结果 |
+| --- | ---: |
+| F-01 全样本 ARI | 0.562087 |
+| F-01 LAPD 耗时 | 10.601109 秒 |
+| 同一 Iris 的 D-01a（d=1）ARI | 0.548465 |
+| F-01 相对 D-01a 的 ARI 差值 | +0.013622 |
+| 同一 Iris 的 ZEUS + K-means ARI | 0.851457 |
+
+官方结果保存的结构数为 1194，`percentkept=0.176889`，SKNN=50，去噪阈值为 0.761157。percentkept 是结构构建阶段记录的比例，不是最终样本预测覆盖率。三个预测簇分别有 50、90、10 个样本。
+
+结论：放宽 filter 后，此前失败的 d=2 配置能够完成运行且预测完整，支持形状筛选影响连接和可运行性的解释。相比 d=1，ARI 小幅上升，但仍明显低于 K-means。由于 d=2、filter=1.25 没有成功预测，不能计算放宽 filter 带来的 ARI 提升；与 d=1 比较也不代表只改变了 filter。1.50 仍是试探值，不是已验证的最佳参数。
+
+本地文件：[F-01 回传目录](../results/lapd_returns/d_check/filter_check/d2_filter150/)，包含 `.mat`、运行日志、状态表和项目 commit。
+
+### F-02：Iris d=3、filter=1.50，已执行
+
+目的：与 F-01 比较，固定 filter=1.50 和其他参数，只把 d 从 2 改成 3。
+
+实际传入配置已从日志核对：d=3、filter=1.50、bandwidth=10、epsilon=0、knnnumber=100、weight='two sided'、K=3、parallel=0。其余字段沿用官方默认；默认 SKNN=50 也在警告中得到确认。
+
+项目 commit：`20b052a3d143de39b4725f6ff2b92b16162f6319`，与 F-01 一致。本次回传没有成功 `.mat`，因此没有新的 MATLAB 版本或官方 commit 记录，只能按原运行流程说明沿用环境，不能从本次结果文件独立核实。
+
+| 项目 | F-02 结果 |
+| --- | --- |
+| 退出码 | 1 |
+| 失败位置 | 官方 `denoise.m` 第 101 行，`knndistances < cutoff` 数组尺寸错误 |
+| 预测、实际输出簇数、ARI、耗时 | 未生成 `.mat`，均无结果 |
+| 图连接提示 | 警告打印 0.00%；源码实际统计的是距离小于 5 的比例 |
+
+结论：filter 从默认 1.40 放宽至 1.50 后，d=3 仍在去噪阶段失败，尚未解决当前配置的连接问题。不能将失败视为 ARI=0，也不能断言 d=3 本身不适合数据。与 F-01 的比较只能说明这两组配置的可运行性不同，无法比较聚类准确度。报错瞬间的 cutoff 和具体结构数量尚未保存。
+
+本地文件：[F-02 回传目录](../results/lapd_returns/d_check/filter_check/d3_filter150/)，包含日志、状态表和项目 commit，没有 `.mat`。
+
+### M-01：Iris 的 MSVD 自动维度估计，已尝试但失败
+
+目的：先单独估计 d，了解官方自动方法的选择，再决定自动 D 聚类的配置。本次没有运行后续聚类。
+
+配置：ID 61 的同一批 `embeddings_scaled`，转换为 double；`rng('default')`；调用 `MSVD(X,0)`，不启用并行。MSVD 内部估计选项沿用官方默认，没有改动 filter、bandwidth 或聚类参数。
+
+项目 commit：`20b052a3d143de39b4725f6ff2b92b16162f6319`；官方 commit：`d678a0baa2a4d9b0134ff1719c80c42e78eda108`。
+
+| 项目 | M-01 结果 |
+| --- | --- |
+| 退出码 | 1 |
+| 失败位置 | MSVD 的近邻搜索调用 `covertreeD.mexa64` 时加载失败 |
+| 直接错误 | 动态库 `libfftw3.so.3` 无法找到 |
+| 估计 D、噪声、耗时 | 未返回结果，未生成 `.mat` |
+
+这是当前服务器加载已编译程序时的依赖问题，与此前 D=3 的去噪错误不同；本次不能用于判断自动估计会选择什么 D。日志开头还出现 parfor 临时变量警告，但使进程停止的是后面的 MEX 加载错误。
+
+下一步先在远程检查该 MEX 的动态库依赖，再处理缺失库。重试使用新的目录保留本次失败记录。
+
+本地文件：[M-01 回传目录](../results/lapd_returns/d_check/d_estimates/)，包含日志、状态表和两份 commit 记录，没有 `.mat`。
+
+### M-02：使用项目目录内的 FFTW 库重试 MSVD，仍失败
+
+维度估计输入和设置与 M-01 相同。没有 sudo 权限，因此用 apt 下载 `libfftw3-double3`，通过 `dpkg-deb -x` 解包到 `data/runtime_libs/fftw/unpacked/`；仅为本次 MATLAB 进程在 LD_LIBRARY_PATH 中加入解包后的库目录，没有修改系统安装或官方源码。
+
+FFTW 包版本：`libfftw3-double3 3.3.8-2ubuntu8`。项目和官方 commit 与 M-01 相同。
+
+| 项目 | M-02 结果 |
+| --- | --- |
+| 退出码 | 1 |
+| 新的失败位置 | `FastRoughSetDownsample.m` 第 192 行调用 `nn_prepare(cXt)` |
+| 直接错误 | MATLAB 不支持把当前解析到的 `NearestNeighbors/nn_prepare.m` 脚本作为函数执行 |
+| 估计 D、噪声、耗时 | 未生成 `.mat`，均无结果 |
+
+此次没有再出现 FFTW 库加载错误，执行已进入后续下采样步骤。新的障碍是 nn_prepare 的可执行函数解析：可能缺少当前 Linux 平台可用的 MEX，或该文件没有正确加入路径，需进一步检查文件列表和 MATLAB 解析结果。不能把本次错误归因于数据或估计维度。parfor 临时变量警告仍存在，但进程停止于 nn_prepare 错误。
+
+本地文件：[M-02 回传目录](../results/lapd_returns/d_check/d_estimates_userlib/)，包含日志、状态、FFTW 包版本及两份 commit 记录，没有 `.mat`。
+
+后续远程检查已确认：NearestNeighbors 目录中只有 nn_prepare.m、nn_search.m 的脚本文件、macOS 的 `.mexmaci64` 文件及 nn_search.dll；当前 MATLAB 的 mexext 为 `.mexa64`，which -all 仅解析到两个 `.m`。因此不是现有 Linux 文件没有加入路径，而是缺少当前平台的编译版本。
+
+下一步检查服务器的 C++ 编译器与 MATLAB MEX 编译配置，再取得对应模块源码编译 Linux 版本。macOS 的编译文件不能通过改后缀变成 Linux 文件。
+
+后续已确认编译条件：服务器为 g++ 11.4.0；MATLAB R2022b 的 Installed 和 Selected C++ 编译器都指向 `/usr/bin/g++`。
+
+### Linux 近邻模块补充：待编译验证
+
+采用保留 OpenTSTOOL 源码的 [MuTE 仓库](https://github.com/mapefast/mute_neurips/tree/2ef31a09a681ad58a9bbbf17c6ea8785ec9e5fb5/OpenTSTOOL)，固定 commit 为 `2ef31a09a681ad58a9bbbf17c6ea8785ec9e5fb5`。原 [makemex.m](https://github.com/mapefast/mute_neurips/blob/2ef31a09a681ad58a9bbbf17c6ea8785ec9e5fb5/OpenTSTOOL/mex-dev/makemex.m) 给出了 NN 模块的头文件路径及 PARTIAL_SEARCH 编译选项。
+
+本项目新增 [build_lapd_neighbors.m](../matlab/build_lapd_neighbors.m)，只编译 nn_prepare、nn_search、range_search 三个文件。使用旧数组接口及 C++11 兼容选项，生成文件放在远程 LAPD 的 NearestNeighbors 目录，与原说明脚本同目录。没有修改官方 `.m` 算法文件；但官方目录会新增平台编译文件，需要作为环境补充记录。
+
+本地提交并推送编译脚本和本文后，在远程执行：
+
+```bash
+cd /tmp/ruan/manifold-clustering
+git pull --ff-only
+git clone https://github.com/mapefast/mute_neurips.git data/runtime_libs/opentstool_src
+git -C data/runtime_libs/opentstool_src checkout 2ef31a09a681ad58a9bbbf17c6ea8785ec9e5fb5
+
+mkdir -p results/lapd_d_check/neighbors_build
+git -C data/runtime_libs/opentstool_src rev-parse HEAD > results/lapd_d_check/neighbors_build/source_commit.txt
+matlab -batch "addpath('matlab'); build_lapd_neighbors" > results/lapd_d_check/neighbors_build/build.log 2>&1
+code=$?
+printf 'exit_code\n%s\n' "$code" > results/lapd_d_check/neighbors_build/run_status.tsv
+cat results/lapd_d_check/neighbors_build/build.log
+```
+
+下载步骤只执行一次。编译脚本会显示三个 `.mexa64` 的解析路径，并把一个小型近邻查询与 MATLAB 的 knnsearch 比较。预期最后打印 `Neighbor search check passed.`；当前本地没有 MATLAB，尚未验证编译或运行是否成功。
+
+回传编译日志并确认检查通过后，再用此前项目目录内的 FFTW 库重试 MSVD。编译步骤本身不运行 MSVD，也不产生新的估计 D 或聚类结果。后续 MSVD 和自动 D 运行都要保留这个 FFTW 加载路径。
+
+自动 D 的完整聚类、ID 14 及其他代表性数据集的 D 检查尚未执行。待实际运行后追加记录，不提前填写结果。
 
 ## 4. 参数怎么传：是否修改源码
 
