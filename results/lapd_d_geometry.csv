@@ -1,0 +1,4 @@
+openml_id,d,quality_filter,n_structures,n_nodes_in_structures,n_components,largest_component,sknn,fraction_in_components_ge_sknn,max_nodes_covered_ge_sknn,max_coverage_ge_sknn
+61,1,,951,150,2,634,50,1.000000,150,1.000000
+61,2,1.250000,415,148,39,133,50,0.633735,101,0.673333
+61,3,1.400000,65,87,24,16,50,0.000000,0,0.000000

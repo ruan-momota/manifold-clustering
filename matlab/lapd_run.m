@@ -1,9 +1,13 @@
-function lapd_run(kind, input_file, output_file, lapd_root, mode, d)
+function lapd_run(kind, input_file, output_file, lapd_root, mode, d, overrides)
 % Run one LAPD dataset and save labels, parameters, diagnostics, and provenance.
 % kind: 'coil20', 'usps', or 'openml'; mode: 'known' or 'estimate'.
 % OpenML d: a positive integer for manual D; [] for automatic D.
+% overrides: optional struct, e.g. struct('filter', 1.5, 'bandwidth', 15).
 if nargin < 6
     d = 1;
+end
+if nargin < 7
+    overrides = struct();
 end
 
 start_dir = pwd;
@@ -62,7 +66,6 @@ switch lower(kind)
         end
         opts.epsilon = 0;
         opts.bandwidth = 10;
-        opts.knnnumber = min(size(X, 1), max(100, ceil(0.1 * size(X, 1)) + opts.bandwidth));
         opts.weight = 'two sided';
     otherwise
         error('kind must be coil20, usps, or openml');
@@ -71,6 +74,19 @@ end
 if isempty(X), error('No samples remain after subset selection'); end
 if strcmp(mode, 'known'), opts.K = numel(unique(labelsGT)); end
 opts.parallel = 0;
+
+supported = {'epsilon', 'bandwidth', 'knnnumber', 'weight', 'filter', ...
+    'numscales', 'denoisingmethod', 'SKNN', 'componentsize', 'parallel', 'noise_level'};
+names = fieldnames(overrides);
+if ~all(ismember(names, supported))
+    error('Unsupported options: %s', strjoin(setdiff(names, supported), ', '));
+end
+for i = 1:numel(names)
+    opts.(names{i}) = overrides.(names{i});
+end
+if strcmpi(kind, 'openml') && ~isfield(overrides, 'knnnumber')
+    opts.knnnumber = min(size(X, 1), max(100, ceil(0.1 * size(X, 1)) + opts.bandwidth));
+end
 
 cd(lapd_root);
 restore_dir = onCleanup(@() cd(start_dir));
@@ -81,6 +97,7 @@ lapd_commit = strtrim(lapd_commit);
 matlab_version = version;
 
 fprintf('LAPD %s %s: %d samples, %d features\n', kind, mode, size(X, 1), size(X, 2));
+disp(opts);
 [intrinsic_dim, epsilon, k_hat, predicted_labels, runtime, misc] = main(X, opts);
 fprintf('Actual D=%d\n', intrinsic_dim);
 predicted_labels = predicted_labels(:);

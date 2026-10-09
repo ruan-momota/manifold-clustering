@@ -2,6 +2,7 @@
 .venv-cpp/
 data/
 models/
+archive/
 vendor/zeus/
 vendor/LAPD/
 vendor/CPP/
