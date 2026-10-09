@@ -219,6 +219,36 @@ cat results/lapd_d_check/neighbors_build/build.log
 
 回传编译日志并确认检查通过后，再用此前项目目录内的 FFTW 库重试 MSVD。编译步骤本身不运行 MSVD，也不产生新的估计 D 或聚类结果。后续 MSVD 和自动 D 运行都要保留这个 FFTW 加载路径。
 
+### B-01：Linux 近邻模块第一次编译，失败
+
+源码 commit 与上一节一致；编译器为服务器已选定的 g++ 11。退出码为 1，在 nn_prepare.cpp 编译阶段停止，未进入近邻查询核对。
+
+日志确认两项旧源码兼容问题：strlen、strncmp 缺少 cstring 声明；模板类中继承的 randindex 被直接调用，现代编译器要求通过 this-> 指明成员。与 FFTW、输入数据或 D 无关。
+
+依据：[B-01 回传目录](../results/lapd_returns/d_check/neighbors_build/)。
+
+### B-02：补充 C++ 兼容处理后重试，待执行
+
+编译脚本现已增加两处处理：编译时强制包含 cstring；将外部工具箱 nearneigh_search.h 中的 `root.center = randindex(Nused);` 改为 `root.center = this->randindex(Nused);`。第二处会保存到项目 data/ 下的外部源码副本，重复执行不会重复添加 this->。没有改动 LAPD 的官方 `.m` 文件或聚类参数。
+
+重新推送编译脚本后，远程拉取并重试。不重新 clone，也不重新 checkout 外部源码，以免清除兼容修改。用新目录保留 B-01 日志：
+
+```bash
+cd /tmp/ruan/manifold-clustering
+git pull --ff-only
+RUN_DIR=results/lapd_d_check/neighbors_build_retry
+mkdir -p "$RUN_DIR"
+git rev-parse HEAD > "$RUN_DIR/project_commit.txt"
+git -C data/runtime_libs/opentstool_src rev-parse HEAD > "$RUN_DIR/source_commit.txt"
+matlab -batch "addpath('matlab'); build_lapd_neighbors" > "$RUN_DIR/build.log" 2>&1
+code=$?
+printf 'exit_code\n%s\n' "$code" > "$RUN_DIR/run_status.tsv"
+git -C data/runtime_libs/opentstool_src diff -- OpenTSTOOL/mex-dev/NNSearcher/nearneigh_search.h > "$RUN_DIR/source_patch.diff"
+cat "$RUN_DIR/build.log"
+```
+
+本地无 MATLAB，尚未确认这次编译是否成功；以远程日志和小型查询核对结果为准。
+
 自动 D 的完整聚类、ID 14 及其他代表性数据集的 D 检查尚未执行。待实际运行后追加记录，不提前填写结果。
 
 ## 4. 参数怎么传：是否修改源码

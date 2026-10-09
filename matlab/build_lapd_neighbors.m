@@ -9,11 +9,21 @@ output_dir = fullfile(project_root, 'vendor', 'LAPD', 'Auxiliary', ...
 start_dir = pwd;
 restore_dir = onCleanup(@() cd(start_dir));
 cd(source_dir);
+% Qualify an inherited member for modern C++ template lookup.
+header_file = fullfile(source_dir, '..', 'NNSearcher', 'nearneigh_search.h');
+header = fileread(header_file);
+header = strrep(header, 'root.center = randindex(Nused);', ...
+    'root.center = this->randindex(Nused);');
+fid = fopen(header_file, 'w');
+fprintf(fid, '%s', header);
+fclose(fid);
+
 names = {'nn_prepare', 'nn_search', 'range_search'};
 for i = 1:numel(names)
     fprintf('Compiling %s\n', names{i});
     mex('-O', '-I.', '-I..', '-DPARTIAL_SEARCH', '-compatibleArrayDims', ...
-        'CXXFLAGS=$CXXFLAGS -std=c++11', [names{i} '.cpp'], '-outdir', output_dir);
+        'CXXFLAGS=$CXXFLAGS -std=c++11 -include cstring', ...
+        [names{i} '.cpp'], '-outdir', output_dir);
 end
 
 addpath(output_dir);
